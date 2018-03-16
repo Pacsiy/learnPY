@@ -3,6 +3,7 @@
 
 from urllib import request
 import re
+import pymysql
 
 
 class MovieTop(object):
@@ -37,7 +38,7 @@ class MovieTop(object):
                             + u'<span.*?class="other">(.*?)</span>.*?'
                             + u'<div.*?class="bd">.*?'
                             + u'<p.*?class="">.*?'
-                            + u'导演:(.*?)&nbsp;&nbsp;&nbsp;.*?<br>'
+                            + u'导演:\s(.*?)\s.*?<br>'
                             + u'(.*?)&nbsp;/&nbsp;'
                             + u'(.*?)&nbsp;/&nbsp;(.*?)</p>.*?'
                             + u'<div.*?class="star">.*?'
@@ -63,7 +64,6 @@ class MovieTop(object):
                                        movie[9]])
 
     def write_page(self):
-        print('开始写入文件...')
         file = open(self.filePath, 'w', encoding='utf-8')
         try:
             for movie in self.movieList:
@@ -78,17 +78,42 @@ class MovieTop(object):
                 file.write('参评人数：' + movie[8] + '\n')
                 file.write('简短影评：' + movie[9] + '\n')
                 file.write('\n')
-            print('成功写入文件...')
+            print('成功写入文件，共有%d条记录...' % len(self.movieList))
         except Exception as e:
             print(e)
         finally:
             file.close()
 
+    def upload(self):
+        db = pymysql.connect("localhost", "root", "love1125", "PythonTest", charset='utf8')
+        cursor = db.cursor()
+
+        insertStr = "INSERT INTO doubanTop250(rank, name, alias, director," \
+                    "showYear, makeCountry, movieType, movieScore, scoreNum, shortFilm)" \
+                    "VALUES (%d, '%s', '%s', '%s', '%s', '%s', '%s', %f, %d, '%s')"
+
+        try:
+            for movie in self.movieList:
+                insertSQL = insertStr % (int(movie[0]), str(movie[1]), str(movie[2]), str(movie[3]),
+                                         str(movie[4]), str(movie[5]), str(movie[6]), float(movie[7]),
+                                         int(movie[8]), str(movie[9]))
+                cursor.execute(insertSQL)
+            db.commit()
+            print('成功上传至数据库...')
+        except Exception as e:
+            print(e)
+            db.rollback()
+        finally:
+            db.close()
+
     def main(self):
         print('开始抓取豆瓣电影TOP250...')
         self.get_page_info()
-        self.write_page()
         print('成功获取豆瓣电影TOP250...')
+        print('开始写入文件...')
+        self.write_page()
+        print('开始上传至数据库...')
+        self.upload()
 
 
 douban = MovieTop()
