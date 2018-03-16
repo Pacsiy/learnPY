@@ -72,7 +72,7 @@ class myExcel(object):
         sheet = excel.sheets()[0]
 
         file = open(mdName, 'w', encoding='utf-8')
-        rowStr = "| %d | [%s]() | %.3f | '%s' |\n"
+        rowStr = "| %d | [%s]() | %.3f | %s |\n"
 
         try:
             file.write('| 编号 | 题名 | 过题率 | 难度 |' + '\n')
@@ -80,7 +80,7 @@ class myExcel(object):
 
             for i in range(0, sheet.nrows):
                 row = sheet.row_values(i)
-                data = rowStr % (int(row[0]), str(row[1]), float(row[2]), str(row[3]))
+                data = rowStr % (int(row[0]), str(row[1]).rstrip(), float(row[2]), str(row[3]))
                 file.write(data)
 
             print('成功写入文件，共有%d条记录...' % sheet.nrows)
