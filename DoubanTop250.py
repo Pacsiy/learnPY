@@ -87,6 +87,7 @@ class MovieTop(object):
     def upload(self):
         db = pymysql.connect("localhost", "root", "love1125", "PythonTest", charset='utf8')
         cursor = db.cursor()
+        cursor.execute('DELETE FROM doubanTop250')
 
         insertStr = "INSERT INTO doubanTop250(rank, name, alias, director," \
                     "showYear, makeCountry, movieType, movieScore, scoreNum, shortFilm)" \

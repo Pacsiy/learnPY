@@ -3,21 +3,21 @@
 
 import xlrd
 import xlwt
+import pymysql
 
 
 class myExcel(object):
     def __init__(self, excelPath):
         self.path = excelPath
+        self.excel = xlrd.open_workbook(excelPath)
 
     def readExcel(self):
-        excel = xlrd.open_workbook(self.path)
-
         # get sheet names
-        print(excel.sheet_names())
+        print(self.excel.sheet_names())
         # get sheet content(By index or By name)
-        sheet = excel.sheet_by_index(0)
-        sheet1 = excel.sheet_by_name("Sheet1")
-        sheet2 = excel.sheets()[0]
+        sheet = self.excel.sheet_by_index(0)
+        sheet1 = self.excel.sheet_by_name("Sheet1")
+        sheet2 = self.excel.sheets()[0]
         # get sheet info
         print(sheet.name, sheet.nrows, sheet.ncols)
         # get row/col content
@@ -32,11 +32,8 @@ class myExcel(object):
         # get cell ctype:0empty 1string 2number 3date 4boolean 5error
         print(sheet.cell(0, 0).ctype)
 
-        return excel
-
     def printExcel(self):
-        excel = self.readExcel()
-        sheet = excel.sheets()[0]
+        sheet = self.excel.sheets()[0]
         for i in range(0, sheet.nrows):
             row = sheet.row_values(i)
             for item in row:
@@ -53,23 +50,21 @@ class myExcel(object):
 
     def writeExcel(self, excelName):
         # create a Excel and add sheet
-        excel = xlwt.Workbook()
-        sheet = excel.add_sheet('sheet1', cell_overwrite_ok=True)
+        newexcel = xlwt.Workbook()
+        newsheet = newexcel.add_sheet('sheet1', cell_overwrite_ok=True)
 
-        headList = ['Stu_id', 'name', 'sex']
-        data = [['1', 'stu1', '男'],
-                ['2', 'stu2', '男'],
-                ['3', 'stu3', '女'],]
+        headList = ['题号', '题名', '过题率', '难度']
+        self.writeOneRow(newsheet, 0, headList)
 
-        self.writeOneRow(sheet, 0, headList)
-        for nrow in range(0, 3):
-            self.writeOneRow(sheet, nrow, data[nrow])
+        sheet = self.excel.sheets()[0]
+        for i in range(0, sheet.nrows):
+            row = sheet.row_values(i)
+            self.writeOneRow(newsheet, i+1, row)
 
-        excel.save(excelName)
+        newexcel.save(excelName)
 
     def toMarkdown(self, mdName):
-        excel = self.readExcel()
-        sheet = excel.sheets()[0]
+        sheet = self.excel.sheets()[0]
 
         file = open(mdName, 'w', encoding='utf-8')
         rowStr = "| %d | [%s]() | %.3f | %s |\n"
@@ -89,14 +84,37 @@ class myExcel(object):
         finally:
             file.close()
 
+    def upload(self):
+        db = pymysql.connect("localhost", "root", "love1125", "PythonTest", charset='utf8')
+        cursor = db.cursor()
+        cursor.execute('DELETE FROM problem')
 
-def main():
-    excel = myExcel(r'./LeetCodeAllProblem.xlsx')
-    excel.readExcel()
-    excel.writeExcel(r'newExcel.xls')
-    print('开始写入Markdown文件...')
-    excel.toMarkdown(r'LeetCodeAll.md')
+        insertStr = '''INSERT INTO problem(pro_id, pro_name, pro_rate, pro_diff) VALUES (%d, "%s", %f, "%s")'''
+
+        try:
+            sheet = self.excel.sheets()[0]
+            for i in range(0, sheet.nrows):
+                row = sheet.row_values(i)
+                insertSQL = insertStr % (int(row[0]), str(row[1]).rstrip('\xa0'), float(row[2]), str(row[3]))
+                cursor.execute(insertSQL)
+
+            db.commit()
+            print('成功上传至数据库...')
+        except Exception as e:
+            print(e)
+            db.rollback()
+        finally:
+            db.close()
+
+    def main(self):
+        self.readExcel()
+        print('开始写入新文档...')
+        self.writeExcel(r'newExcel.xls')
+        print('开始写入Markdown文件...')
+        self.toMarkdown(r'LeetCodeAll.md')
+        print('开始上传数据库...')
+        self.upload()
 
 
-if __name__ == "__main__":
-    main()
+leetcode = myExcel(r'./LeetCodeAllProblem.xlsx')
+leetcode.main()
